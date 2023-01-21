@@ -1,58 +1,103 @@
+import net.darkhax.curseforgegradle.TaskPublishCurseForge
+import net.darkhax.curseforgegradle.UploadArtifact
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+
+buildscript {
+    dependencies {
+        classpath "com.diffplug.spotless:spotless-plugin-gradle:6.8.0"
+    }
+}
+
 plugins {
+    id 'java'
+    id 'idea'
     id 'eclipse'
     id 'maven-publish'
     id 'net.minecraftforge.gradle' version '5.1.+'
+    id 'org.parchmentmc.librarian.forgegradle' version '1.+'
+    id 'net.darkhax.curseforgegradle' version '1.0.11'
+    id 'org.ajoberstar.grgit' version '4.1.1'
 }
 
-version = '1.0'
-group = 'com.yourname.modid' // http://maven.apache.org/guides/mini/guide-naming-conventions.html
-archivesBaseName = 'modid'
+if(!System.getenv('CI')) {
+    apply plugin: 'com.diffplug.spotless'
+    spotless {
+        ratchetFrom 'origin/1.19'
+        format 'misc', {
+            target '*.gradle', '*.md', '.gitignore'
 
-// Mojang ships Java 17 to end users in 1.18+, so your mod should target Java 17.
+            trimTrailingWhitespace()
+            indentWithSpaces(2)
+            endWithNewline()
+        }
+        java {
+            removeUnusedImports()
+            trimTrailingWhitespace()
+            googleJavaFormat()
+        }
+    }
+}
+
+if(project.tasks.findByName("wrapper") == null) {
+    task wrapper(type: Wrapper) {
+        gradleVersion = '7.6'
+        distributionType = Wrapper.DistributionType.ALL
+    }
+}
+
+String modVersion = property("modVersion")
+String basicVersion = "${modVersion}." + (System.env.BUILD_NUMBER ?: "homebaked") + (property("releaseType") != 'release' ? "-${property("releaseType")}" : '')
+version = "${property("minecraftVersion")}-${basicVersion}"
+group = "novamachina.${project.name.toLowerCase()}"
+archivesBaseName = property("artifactBasename")
+
+String minecraftRelease = getMinecraftRelease()
+String forgeMajor = getForgeMajor()
+
+ext {
+    modsTomlProperties = ["version"                : "${modVersion}",
+                         "mc_version"             : "[${minecraftRelease},)",
+                         "forge_version"          : "[${property("forgeVersion")},)",
+                         "loader_version"         : "[${forgeMajor},)",
+                         "git_url" : "${property("gitUrl")}",
+                         "curseforge_url" : "${property("curseForgeUrl")}",
+                          "ex_nihilo_version" : "[${property("exNihiloVersion")},)",
+                          "thermal_foundation_version" : "[${property("thermalFoundationVersion")},)",
+                        ]
+    jsonPatterns = ["**/*.json", "**/*.mcmeta"]
+}
+
+defaultTasks 'build'
+
+task installLocalGitHook(type: Copy) {
+    from new File(rootProject.rootDir, 'scripts/pre-commit')
+    into { new File(rootProject.rootDir, '.git/hooks')}
+    fileMode 0775
+}
+
+build.dependsOn installLocalGitHook
+
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
 println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
 minecraft {
-    // The mappings can be changed at any time and must be in the following format.
-    // Channel:   Version:
-    // official   MCVersion             Official field/method names from Mojang mapping files
-    // parchment  YYYY.MM.DD-MCVersion  Open community-sourced parameter names and javadocs layered on top of official
-    //
-    // You must be aware of the Mojang license when using the 'official' or 'parchment' mappings.
-    // See more information here: https://github.com/MinecraftForge/MCPConfig/blob/master/Mojang.md
-    //
-    // Parchment is an unofficial project maintained by ParchmentMC, separate from MinecraftForge
-    // Additional setup is needed to use their mappings: https://github.com/ParchmentMC/Parchment/wiki/Getting-Started
-    //
-    // Use non-default mappings at your own risk. They may not always work.
-    // Simply re-run your setup task after changing the mappings to update your workspace.
-    mappings channel: 'official', version: '1.19.2'
+    mappings channel: property("mappingsChannel"), version: property("mappingsVersion")
 
     // accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg') // Currently, this location cannot be changed from the default.
 
-    // Default run configurations.
-    // These can be tweaked, removed, or duplicated as needed.
     runs {
         client {
             workingDirectory project.file('run')
 
-            // Recommended logging data for a userdev environment
-            // The markers can be added/remove as needed separated by commas.
-            // "SCAN": For mods scan.
-            // "REGISTRIES": For firing of registry events.
-            // "REGISTRYDUMP": For getting the contents of all registries.
             property 'forge.logging.markers', 'REGISTRIES'
-
-            // Recommended logging level for the console
-            // You can set various levels here.
-            // Please read: https://stackoverflow.com/questions/2031163/when-to-use-the-different-log-levels
             property 'forge.logging.console.level', 'debug'
-
-            // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
-            property 'forge.enabledGameTestNamespaces', 'examplemod'
+            property 'forge.enabledGameTestNamespaces', "${project.name.toLowerCase()}"
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
 
             mods {
-                examplemod {
+                "${project.name}" {
                     source sourceSets.main
                 }
             }
@@ -62,32 +107,29 @@ minecraft {
             workingDirectory project.file('run')
 
             property 'forge.logging.markers', 'REGISTRIES'
-
             property 'forge.logging.console.level', 'debug'
-
-            property 'forge.enabledGameTestNamespaces', 'examplemod'
+            property 'forge.enabledGameTestNamespaces', "${project.name.toLowerCase()}"
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
 
             mods {
-                examplemod {
+                "${project.name}" {
                     source sourceSets.main
                 }
             }
         }
 
-        // This run config launches GameTestServer and runs all registered gametests, then exits.
-        // By default, the server will crash when no gametests are provided.
-        // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
             workingDirectory project.file('run')
 
             property 'forge.logging.markers', 'REGISTRIES'
-
             property 'forge.logging.console.level', 'debug'
-
-            property 'forge.enabledGameTestNamespaces', 'examplemod'
+            property 'forge.enabledGameTestNamespaces', "${project.name.toLowerCase()}"
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
 
             mods {
-                examplemod {
+                "${project.name}" {
                     source sourceSets.main
                 }
             }
@@ -97,14 +139,14 @@ minecraft {
             workingDirectory project.file('run')
 
             property 'forge.logging.markers', 'REGISTRIES'
-
             property 'forge.logging.console.level', 'debug'
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
 
-            // Specify the modid for data generation, where to output the resulting resource, and where to look for existing resources.
-            args '--mod', 'examplemod', '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+            args '--mod', "${project.name.toLowerCase()}", '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
 
             mods {
-                examplemod {
+                "${project.name}" {
                     source sourceSets.main
                 }
             }
@@ -112,48 +154,78 @@ minecraft {
     }
 }
 
-// Include resources generated by data generators.
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 repositories {
-    // Put repositories for dependencies here
-    // ForgeGradle automatically adds the Forge maven and Maven Central for you
+    maven {
+        name 'CoFH'
+        url 'https://nexus.covers1624.net/repository/cofh-releases/'
+        content {
+            includeGroup 'com.teamcofh'
+        }
+    }
+    maven {
+        name 'NovaMachina Mods'
+        url 'https://repo.jacob-williams.me/repository/internal/'
+        content {
+            includeGroup 'novamachina.exnihilosequentia'
+        }
+    }
 
-    // If you have mod jar dependencies in ./libs, you can declare them as a repository like so:
-    // flatDir {
-    //     dir 'libs'
-    // }
+    whenObjectAdded {
+        if (it instanceof MavenArtifactRepository) {
+            def url = it.url.toString()
+            if (url == 'https://maven.minecraftforge.net/' || url == 'https://libraries.minecraft.net/' || url == 'https://repo.maven.apache.org/maven2/') {
+                try {
+                    it.content {
+                        excludeGroup 'com.teamcofh'
+                        excludeGroup 'novamachina.exnihilosequentia'
+                    }
+                    println("Adding exclusions to ${it.url}")
+                } catch (Exception ignored) {
+                    //oh well
+                }
+            }
+        }
+    }
+}
+
+configurations {
+    all {
+        exclude group: 'mezz.jei', module: 'jei-1.19.2-forge'
+        exclude group: 'mezz.jei', module: 'jei-1.19.2-common'
+    }
 }
 
 dependencies {
-    // Specify the version of Minecraft to use. If this is any group other than 'net.minecraft', it is assumed
-    // that the dep is a ForgeGradle 'patcher' dependency, and its patches will be applied.
-    // The userdev artifact is a special name and will get all sorts of transformations applied to it.
-    minecraft 'net.minecraftforge:forge:1.19.2-43.1.32'
+    minecraft "net.minecraftforge:forge:${property("minecraftVersion")}-${property("forgeVersion")}"
 
-    // Real mod deobf dependency examples - these get remapped to your current mappings
-    // compileOnly fg.deobf("mezz.jei:jei-${mc_version}:${jei_version}:api") // Adds JEI API as a compile dependency
-    // runtimeOnly fg.deobf("mezz.jei:jei-${mc_version}:${jei_version}") // Adds the full JEI mod as a runtime dependency
-    // implementation fg.deobf("com.tterrag.registrate:Registrate:MC${mc_version}-${registrate_version}") // Adds registrate as a dependency
+    if (findProject(':ExNihiloSequentia') != null) {
+        implementation(project(':ExNihiloSequentia')) {
+            transitive = false
+        }
+    } else {
+        implementation fg.deobf (project.dependencies.create("novamachina.exnihilosequentia:ExNihiloSequentia:${property("exNihiloVersion")}") {
+            transitive = false
+        })
+    }
 
-    // Examples using mod jars from ./libs
-    // implementation fg.deobf("blank:coolmod-${mc_version}:${coolmod_version}")
-
-    // For more info...
-    // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
-    // http://www.gradle.org/docs/current/userguide/dependency_management.html
+    implementation fg.deobf("com.teamcofh:cofh_core:${property("minecraftVersion")}-${property("cofhCoreVersion")}")
+    implementation fg.deobf("com.teamcofh:thermal_foundation:${property("minecraftVersion")}-${property("thermalFoundationVersion")}")
+    implementation fg.deobf("com.teamcofh:thermal_core:${property("minecraftVersion")}-${property("thermalCoreVersion")}")
 }
 
-// Example for how to get properties into the manifest for reading at runtime.
+String projectProperName = property("projectProperName")
+
 jar {
     manifest {
         attributes([
-                "Specification-Title"     : "examplemod",
-                "Specification-Vendor"    : "examplemodsareus",
-                "Specification-Version"   : "1", // We are version 1 of ourselves
-                "Implementation-Title"    : project.name,
-                "Implementation-Version"  : project.jar.archiveVersion,
-                "Implementation-Vendor"   : "examplemodsareus",
+                "Specification-Title"     : projectProperName,
+                "Specification-Vendor"    : "NovaMachina",
+                "Specification-Version"   : "${modVersion}",
+                "Implementation-Title"    : projectProperName,
+                "Implementation-Version"  : "${modVersion}",
+                "Implementation-Vendor"   : "NovaMachina",
                 "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
         ])
     }
@@ -161,23 +233,215 @@ jar {
 
 // Example configuration to allow publishing using the maven-publish plugin
 // This is the preferred method to reobfuscate your jar file
-jar.finalizedBy('reobfJar')
+//jar.finalizedBy('reobfJar')
 // However if you are in a multi-project build, dev time needs unobfed jar files, so you can delay the obfuscation until publishing by doing
-// publish.dependsOn('reobfJar')
+ publish.dependsOn('reobfJar')
+
+tasks.withType(GenerateModuleMetadata) {
+    // Disable Gradle 7 module metadata generation as it does not play nicely with FG
+    enabled = false
+}
 
 publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            artifact jar
+    publications { PublicationContainer publicationContainer ->
+        publicationContainer.register("main", MavenPublication) { MavenPublication publication ->
+            publication.from((SoftwareComponent) components.java)
+            publication.groupId = project.group
+            publication.version = project.version
+            publication.artifactId = System.getenv("MAVEN_ARTIFACT") ?: project.archivesBaseName
+            publication.artifacts = [jar]
+            publication.pom {
+                name.set("${property("projectProperName")}")
+                packaging = 'jar'
+                description.set("${property("projectDescription")}")
+                url.set("${property("curseForgeUrl")}")
+                scm {
+                    url.set("${property("gitUrl")}.git")
+                }
+                issueManagement {
+                    system.set('github')
+                    url.set("${property("gitUrl")}/issues")
+                }
+                licenses {
+                    license {
+                        name.set('Creative Commons')
+                        distribution.set('repo')
+                    }
+                }
+                withXml {
+                    NodeList dependencies = asNode().dependencies
+                    NodeList allDeps = dependencies.'*'
+
+                    // Remove forge deps
+                    allDeps.<Node> findAll() { Node el ->
+                        el.artifactId.text() == 'forge' && el.groupId.text() == 'net.minecraftforge'
+                    }.forEach() { Node el ->
+                        el.parent().remove(el)
+                    }
+                    //remove ForgeGradle's mapped suffix from versions & set as optional so anyone else doesn't inherit them
+                    allDeps.<Node> findAll() { Node el ->
+                        el.version.text().contains('_mapped_')
+                    }.each { Node el ->
+                        el.version.each { Node version ->
+                            def versionText = version.text()
+                            version.setValue(versionText.substring(0, versionText.indexOf('_mapped_')))
+                        }
+                        el.appendNode('optional', true)
+                    }
+                }
+            }
         }
     }
     repositories {
         maven {
-            url "file://${project.projectDir}/mcmodsrepo"
+            url = "https://repo.jacob-williams.me/repository/internal"
+            credentials {
+                username = System.getenv("NEXUS_USERNAME")
+                password = System.getenv("NEXUS_PASSWORD")
+            }
         }
     }
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
+}
+
+task replaceResources(type: Copy) {
+    it.outputs.upToDateWhen { false }
+    def modsToml = copySpec {
+        from(sourceSets.main.resources) {
+            include "META-INF/mods.toml"
+            expand modsTomlProperties
+        }
+    }
+    it.with modsToml
+    it.into "$buildDir/resources/main/"
+    if (new File("$rootDir/out/production/${project.name}.main/").exists()) {
+        copy {
+            with modsToml
+            into "$rootDir/out/production/${project.name}.main/"
+        }
+    }
+    if (new File("$rootDir/bin/main/").exists()) {
+        copy {
+            with modsToml
+            into "$rootDir/bin/main/"
+        }
+    }
+}
+
+processResources {
+    duplicatesStrategy(DuplicatesStrategy.FAIL)
+    exclude('META-INF/mods.toml')
+    from(projectDir) {
+        include "logo.png"
+    }
+    configure {
+        finalizedBy {
+            replaceResources
+        }
+    }
+    doLast {
+        fileTree(dir: getOutputs().getFiles().getAsPath(), includes: jsonPatterns).each {
+            File file -> file.setText(JsonOutput.toJson(new JsonSlurper().parse(file)))
+        }
+    }
+}
+
+classes {
+    configure {
+        dependsOn {
+            replaceResources
+        }
+    }
+}
+
+compileJava {
+    options.compilerArgs << "-Acrafttweaker.processor.document.output_directory=${file('docsOut')}"
+    options.getGeneratedSourceOutputDirectory().set(file("src/datagen/main/resources/"))
+}
+
+String getMinecraftRelease() {
+    String value = property("minecraftVersion")
+    String[] values = value.split("\\.")
+    return "${values[0]}.${values[1]}"
+}
+
+String getForgeMajor() {
+    String value = property("forgeVersion")
+    String[] values = value.split("\\.")
+    return "${values[0]}"
+}
+
+String resolvedChangelog = null
+
+String changeLogResolver = { ->
+    if(resolvedChangelog != null) {
+        return resolvedChangelog
+    }
+    String generatedChangelog = "Unable to generate changelog :("
+    String currentCommit = System.getenv("GIT_COMMIT")
+    String prevCommit = System.getenv("GIT_PREVIOUS_SUCCESSFUL_COMMIT") ?: System.getenv("GIT_PREVIOUS_COMMIT")
+
+    if (currentCommit != null && prevCommit != null) {
+        generatedChangelog = ""
+        grgit.log {
+            range(prevCommit, currentCommit)
+        }.reverse().each { commit ->
+            // Use full message rather than short message to get any new lines, and trim it so that any trailing new lines
+            // get removed so that we don't end up with extra spaces
+            String message = commit.fullMessage.trim()
+            if (!message.startsWith("Merge branch") && !message.startsWith("Merge pull request")) {
+                //Ignore Merges and PR Merges
+                message = message.replaceAll("#(\\d+)", { match ->// turn issues/prs into links (github currently supports prs being linked as issues)
+                    return "<a href=\"${property("gitUrl")}/issues/${match[1]}\">${match[0]}</a>"
+                } as String).replaceAll("\\n", "<br>&emsp;")
+                // convert new lines that are part of a commit message into actual new lines and a tab
+                if (generatedChangelog != "") {
+                    // If this isn't the first commit prepend an extra newline
+                    generatedChangelog += "<br>"
+                }
+                generatedChangelog += "<a href=\"${property("gitUrl")}/commit/${commit.id}\">${commit.getAbbreviatedId()}</a> - ${message}"
+            }
+        }
+        println "Changelog generated"
+    }
+
+    File releaseNotesFile = project.file("docs/release_${modVrsion}.html")
+    if (releaseNotesFile.exists()) {
+        // Add any version specific changelog stuff
+        def releaseNotes = releaseNotesFile.getText()
+        generatedChangelog = "$releaseNotes<br> $generatedChangelog"
+    }
+
+    if (property("releaseType") == "alpha") {
+        // Add a warning at the top about what an alpha build means
+        generatedChangelog = "Warning: ${property("projectProperName")} is currently in alpha, and is not recommended for widespread use in modpacks. There are likely to be game breaking bugs, " +
+                "and updating from one alpha to the next may cause various ${property("projectProperName")} blocks and items to disappear/void their contents. While we will try to not have this " +
+                "happen/keep it to a minimum make sure to make backups. <br> $generatedChangelog"
+    }
+    if (property("releaseType") == "beta") {
+        // Add a warning at the top about what an beta build means
+        generatedChangelog = "Warning: ${property("projectProperName")} is currently in beta, and is not recommended for widespread use in modpacks. There may be game breaking bugs, " +
+                "and updating from one beta to the next may cause various ${property("projectProperName")} blocks and items to disappear/void their contents. " +
+                "While this is unlikely to happen in a beta, make sure to make backups. <br> $generatedChangelog"
+    }
+    resolvedChangelog = generatedChangelog
+    return generatedChangelog
+}
+
+task publishCurseForge(type: TaskPublishCurseForge) {
+    apiToken = System.getenv("CURSEFORGE_KEY")
+    String projectId = project.property("curseForgeId")
+
+    UploadArtifact mainFile = upload(projectId, jar)
+    mainFile.releaseType = project.property("releaseType")
+    mainFile.changelogType = 'html'
+    mainFile.changelog = changeLogResolver
+    mainFile.addModLoader("Forge")
+    mainFile.addGameVersion(project.property("minecraftVersion"))
+    mainFile.addOptional("jade")
+    mainFile.addOptional("jei")
+    mainFile.addOptional("the-one-probe")
 }
