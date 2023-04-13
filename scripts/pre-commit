@@ -1,8 +1,9 @@
-#/bin/sh
+#! /bin/sh
 echo "*****Running Linter******"
 git stash -q --keep-index
 ./gradlew spotlessApply
 status=$?
 git stash pop -q
 echo "*****Done running Linter******"
+
 exit $status

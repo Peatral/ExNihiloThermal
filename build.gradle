@@ -46,8 +46,8 @@ if(project.tasks.findByName("wrapper") == null) {
     }
 }
 
-String modVersion = property("modVersion")
-String basicVersion = "${modVersion}." + (System.env.BUILD_NUMBER ?: "homebaked") + (property("releaseType") != 'release' ? "-${property("releaseType")}" : '')
+String modVersion = System.env.SEMVER ?: property("modVersion")
+String basicVersion = "${modVersion}" + (property("releaseType") != 'release' ? "-${property("releaseType")}" : '')
 version = "${property("minecraftVersion")}-${basicVersion}"
 group = "novamachina.${project.name.toLowerCase()}"
 archivesBaseName = property("artifactBasename")
@@ -71,8 +71,17 @@ ext {
 defaultTasks 'build'
 
 task installLocalGitHook(type: Copy) {
-    from new File(rootProject.rootDir, 'scripts/pre-commit')
-    into { new File(rootProject.rootDir, '.git/hooks')}
+    group = "management"
+    description = "Installs git hooks into their proper location"
+
+    String hooksDir = '.git/hooks'
+    if(file("${projectDir}/.git").isFile()) {
+        String fileContents = new File(projectDir, '.git').text
+        hooksDir = "${fileContents.split(": ")[1].dropRight(1)}/hooks"
+    }
+
+    from new File(projectDir, 'scripts/pre-commit')
+    into { new File(hooksDir)}
     fileMode 0775
 }
 
@@ -166,7 +175,7 @@ repositories {
     }
     maven {
         name 'NovaMachina Mods'
-        url 'https://repo.jacob-williams.me/repository/internal/'
+        url 'https://dl.cloudsmith.io/public/novamachina-mods/ex-nihilo-sequentia/maven/'
         content {
             includeGroup 'novamachina.exnihilosequentia'
         }
@@ -294,10 +303,11 @@ publishing {
     }
     repositories {
         maven {
-            url = "https://repo.jacob-williams.me/repository/internal"
+            name = "cloudsmith"
+            url = "https://maven.cloudsmith.io/novamachina-mods/ex-nihilo-sequentia/"
             credentials {
-                username = System.getenv("NEXUS_USERNAME")
-                password = System.getenv("NEXUS_PASSWORD")
+                username = System.getenv("MAVEN_USERNAME")
+                password = System.getenv("MAVEN_PASSWORD")
             }
         }
     }
@@ -432,6 +442,9 @@ String changeLogResolver = { ->
 }
 
 task publishCurseForge(type: TaskPublishCurseForge) {
+    group = "publishing"
+    description = "Publishes project to CurseForge"
+
     apiToken = System.getenv("CURSEFORGE_KEY")
     String projectId = project.property("curseForgeId")
 
@@ -448,6 +461,13 @@ task publishCurseForge(type: TaskPublishCurseForge) {
 
 if(rootProject.name != project.name) {
     task updateToolingProperties(type: WriteProperties) {
+        group = "management"
+        description = "Updates tooling properties for all sub-projects"
+
+        outputs.upToDateWhen {
+            false
+        }
+
         outputFile("gradle.properties")
 
         doFirst {
@@ -466,11 +486,12 @@ if(rootProject.name != project.name) {
         comment('''This file may have been edited by a Gradle Task.
 
 A note on the 'modVersion' property
-Version pattern: MAJORMOD.MAJORAPI.MINOR.PATCH (Only MAJORMOD.MAJORAPI.MINOR are declared here)
-Update MAJORMOD when mod objects (items, blocks, block entities) are removed or fundamental mechanics are changed
-Update MAJORAPI when any part of the mod's public-facing API is change (reordering enums, changing method signatures, or removal of public methods)
+Version pattern: MAJOR.MINOR.PATCH
+Update MAJORMOD when mod objects (items, blocks, block entities) are removed, fundamental mechanics are changed, or backwards compatibility is broken.
 Update MINOR when mod objects (items, blocks, block entities) or non-fundamental mechanics are added, or elements of the API are deprecated (but not removed)
-PATCH will automatically be appended to the version and handled by Jenkins''')
+PATCH will automatically be created by GitVersion
+
+The value in gradle.properties is only used in local development''')
     }
 }
 

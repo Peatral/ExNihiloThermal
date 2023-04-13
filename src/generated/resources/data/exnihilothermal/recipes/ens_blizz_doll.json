@@ -1,0 +1,29 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "group": "exnihilosequentia",
+  "key": {
+    "v": {
+      "tag": "forge:dusts/redstone"
+    },
+    "w": {
+      "tag": "forge:crops/nether_wart"
+    },
+    "x": {
+      "item": "minecraft:snowball"
+    },
+    "y": {
+      "item": "exnihilosequentia:porcelain_doll"
+    },
+    "z": {
+      "tag": "forge:dusts/glowstone"
+    }
+  },
+  "pattern": [
+    "xvx",
+    "zyz",
+    "xwx"
+  ],
+  "result": {
+    "item": "exnihilothermal:blizz_doll"
+  }
+}

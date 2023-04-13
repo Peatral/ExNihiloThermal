@@ -21,7 +21,7 @@ public class ExNihiloThermalLangGenerator extends AbstractLangGenerator {
     addItemAutoName(ExNihiloThermalItems.BASALZ_DOLL.getId().getPath());
     addItemAutoName(ExNihiloThermalItems.BLIZZ_DOLL.getId().getPath());
     addItemAutoName(ExNihiloThermalItems.BLITZ_DOLL.getId().getPath());
-//    addItemAutoName(ExNihiloThermalItems.DUST_OBSIDIAN.getId().getPath());
+    addItemAutoName(ExNihiloThermalItems.DUST_OBSIDIAN.getId().getPath());
     add("tooltip.doll.basalz", "Add to a barrel of lava to spawn a Basalz");
     add("tooltip.doll.blitz", "Add to a barrel of lava to spawn a Blitz");
     add("tooltip.doll.blizz", "Add to a barrel of water to spawn a Blizz");

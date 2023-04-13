@@ -14,7 +14,7 @@ public class ExNihiloThermalItemGenerator extends AbstractItemGenerator {
 
   private static final ExNihiloLogger logger = new ExNihiloLogger(LogUtils.getLogger());
 
-  private static final String ITEMS_TAG = "items/";
+  private static final String ITEMS_TAG = "item/";
   private static final String ITEM_GENERATED = "item/generated";
   private static final String LAYER_0_TAG = "layer0";
 
@@ -55,6 +55,6 @@ public class ExNihiloThermalItemGenerator extends AbstractItemGenerator {
         "layer0",
         new ResourceLocation(
             ExNihiloThermalConstants.ModIds.EX_NIHILO_THERMAL,
-            "items/" + ExNihiloThermalItems.DUST_OBSIDIAN.get().getResourceName()));
+            "item/" + ExNihiloThermalItems.DUST_OBSIDIAN.get().getResourceName()));
   }
 }
