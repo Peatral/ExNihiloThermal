@@ -2,6 +2,7 @@ import net.darkhax.curseforgegradle.TaskPublishCurseForge
 import net.darkhax.curseforgegradle.UploadArtifact
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
+import se.bjurr.gitchangelog.plugin.gradle.GitChangelogTask
 
 buildscript {
     dependencies {
@@ -17,7 +18,8 @@ plugins {
     id 'net.minecraftforge.gradle' version '5.1.+'
     id 'org.parchmentmc.librarian.forgegradle' version '1.+'
     id 'net.darkhax.curseforgegradle' version '1.0.11'
-    id 'org.ajoberstar.grgit' version '4.1.1'
+    id 'com.modrinth.minotaur' version "2.+"
+    id "se.bjurr.gitchangelog.git-changelog-gradle-plugin" version "1.79.0"
 }
 
 if(!System.getenv('CI')) {
@@ -46,27 +48,27 @@ if(project.tasks.findByName("wrapper") == null) {
     }
 }
 
-String modVersion = System.env.SEMVER ?: property("modVersion")
-String basicVersion = "${modVersion}" + (property("releaseType") != 'release' ? "-${property("releaseType")}" : '')
-version = "${property("minecraftVersion")}-${basicVersion}"
+ext {
+    modsTomlProperties = [
+            "version" : "${modVersion}",
+            "mc_version" : "[${minecraftRelease},)",
+            "forge_version" : "[${property("forgeVersion")},)",
+            "loader_version" : "[${forgeMajor},)",
+            "git_url" : "${property("gitUrl")}",
+            "curseforge_url" : "${property("curseForgeUrl")}",
+            "ex_nihilo_version" : "[${modVersion},)",
+            "thermal_foundation_version" : "[${property("thermalFoundationVersion")},)",
+    ]
+    jsonPatterns = ["**/*.json", "**/*.mcmeta"]
+}
+
+String basicVersion = "${property("modVersion")}." + (System.getenv("GITHUB_RUN_NUMBER") ?: "homebaked")
+version = "${property("minecraftVersion")}-${basicVersion}" + (property("releaseType") != 'release' ? "-${property("releaseType")}" : '')
 group = "novamachina.${project.name.toLowerCase()}"
 archivesBaseName = property("artifactBasename")
 
 String minecraftRelease = getMinecraftRelease()
 String forgeMajor = getForgeMajor()
-
-ext {
-    modsTomlProperties = ["version"                : "${modVersion}",
-                         "mc_version"             : "[${minecraftRelease},)",
-                         "forge_version"          : "[${property("forgeVersion")},)",
-                         "loader_version"         : "[${forgeMajor},)",
-                         "git_url" : "${property("gitUrl")}",
-                         "curseforge_url" : "${property("curseForgeUrl")}",
-                          "ex_nihilo_version" : "[${modVersion},)",
-                          "thermal_foundation_version" : "[${property("thermalFoundationVersion")},)",
-                        ]
-    jsonPatterns = ["**/*.json", "**/*.mcmeta"]
-}
 
 defaultTasks 'build'
 
@@ -200,7 +202,7 @@ repositories {
 }
 
 configurations {
-    all {
+    configureEach {
         exclude group: 'mezz.jei', module: 'jei-1.19.2-forge'
         exclude group: 'mezz.jei', module: 'jei-1.19.2-common'
     }
@@ -384,63 +386,6 @@ String getForgeMajor() {
     return "${values[0]}"
 }
 
-String resolvedChangelog = null
-
-String changeLogResolver = { ->
-    if(resolvedChangelog != null) {
-        return resolvedChangelog
-    }
-    String generatedChangelog = "Unable to generate changelog :("
-    String currentCommit = System.getenv("GIT_COMMIT")
-    String prevCommit = System.getenv("GIT_PREVIOUS_SUCCESSFUL_COMMIT") ?: System.getenv("GIT_PREVIOUS_COMMIT")
-
-    if (currentCommit != null && prevCommit != null) {
-        generatedChangelog = ""
-        grgit.log {
-            range(prevCommit, currentCommit)
-        }.reverse().each { commit ->
-            // Use full message rather than short message to get any new lines, and trim it so that any trailing new lines
-            // get removed so that we don't end up with extra spaces
-            String message = commit.fullMessage.trim()
-            if (!message.startsWith("Merge branch") && !message.startsWith("Merge pull request")) {
-                //Ignore Merges and PR Merges
-                message = message.replaceAll("#(\\d+)", { match ->// turn issues/prs into links (github currently supports prs being linked as issues)
-                    return "<a href=\"${property("gitUrl")}/issues/${match[1]}\">${match[0]}</a>"
-                } as String).replaceAll("\\n", "<br>&emsp;")
-                // convert new lines that are part of a commit message into actual new lines and a tab
-                if (generatedChangelog != "") {
-                    // If this isn't the first commit prepend an extra newline
-                    generatedChangelog += "<br>"
-                }
-                generatedChangelog += "<a href=\"${property("gitUrl")}/commit/${commit.id}\">${commit.getAbbreviatedId()}</a> - ${message}"
-            }
-        }
-        println "Changelog generated"
-    }
-
-    File releaseNotesFile = project.file("docs/release_${modVrsion}.html")
-    if (releaseNotesFile.exists()) {
-        // Add any version specific changelog stuff
-        def releaseNotes = releaseNotesFile.getText()
-        generatedChangelog = "$releaseNotes<br> $generatedChangelog"
-    }
-
-    if (property("releaseType") == "alpha") {
-        // Add a warning at the top about what an alpha build means
-        generatedChangelog = "Warning: ${property("projectProperName")} is currently in alpha, and is not recommended for widespread use in modpacks. There are likely to be game breaking bugs, " +
-                "and updating from one alpha to the next may cause various ${property("projectProperName")} blocks and items to disappear/void their contents. While we will try to not have this " +
-                "happen/keep it to a minimum make sure to make backups. <br> $generatedChangelog"
-    }
-    if (property("releaseType") == "beta") {
-        // Add a warning at the top about what an beta build means
-        generatedChangelog = "Warning: ${property("projectProperName")} is currently in beta, and is not recommended for widespread use in modpacks. There may be game breaking bugs, " +
-                "and updating from one beta to the next may cause various ${property("projectProperName")} blocks and items to disappear/void their contents. " +
-                "While this is unlikely to happen in a beta, make sure to make backups. <br> $generatedChangelog"
-    }
-    resolvedChangelog = generatedChangelog
-    return generatedChangelog
-}
-
 task publishCurseForge(type: TaskPublishCurseForge) {
     group = "publishing"
     description = "Publishes project to CurseForge"
@@ -451,12 +396,35 @@ task publishCurseForge(type: TaskPublishCurseForge) {
     UploadArtifact mainFile = upload(projectId, jar)
     mainFile.releaseType = project.property("releaseType")
     mainFile.changelogType = 'html'
-    mainFile.changelog = changeLogResolver
+    mainFile.changelog = (file('changelog.html').exists() ? file('changelog.html').text : "No changelog was specified.")
     mainFile.addModLoader("Forge")
     mainFile.addGameVersion(project.property("minecraftVersion"))
     mainFile.addOptional("jade")
     mainFile.addOptional("jei")
     mainFile.addOptional("the-one-probe")
+}
+
+publishCurseForge.dependsOn('reobfJar')
+publishCurseForge.dependsOn('makeChangelogHtml')
+
+modrinth {
+    token = System.getenv("MODRINTH_TOKEN")
+    projectId = "${project.property("modrinthProjectId")}"
+    uploadFile = jar
+    versionType = "${project.property("releaseType")}"
+    gameVersions = ["${project.property("minecraftVersion")}"]
+    loaders = ["forge"]
+    changelog = (file('changelog.md').exists() ? file('changelog.md').text : DEFAULT_CHANGELOG)
+    dependencies {
+        required.project "thermal-foundation"
+    }
+}
+
+//tasks.named("modrinth") {
+//    dependsOn('reobfJar')
+//}
+tasks.named("modrinth") {
+    dependsOn('makeChangelogMd')
 }
 
 if(rootProject.name != project.name) {
@@ -486,10 +454,11 @@ if(rootProject.name != project.name) {
         comment('''This file may have been edited by a Gradle Task.
 
 A note on the 'modVersion' property
-Version pattern: MAJOR.MINOR.PATCH
+Version pattern: MAJORMOD.MAJORAPI.MINOR.PATCH
 Update MAJORMOD when mod objects (items, blocks, block entities) are removed, fundamental mechanics are changed, or backwards compatibility is broken.
+Update MAJORAPI when any part of the mod's public-facing API is changed, such as reordered enums, method signature changes, or removal of public methods.
 Update MINOR when mod objects (items, blocks, block entities) or non-fundamental mechanics are added, or elements of the API are deprecated (but not removed)
-PATCH will automatically be created by GitVersion
+PATCH will automatically be created by GitHub Action
 
 The value in gradle.properties is only used in local development''')
     }
@@ -505,4 +474,81 @@ Map<String, Object> getProps(File propFile) {
         })
     }
     return mappedProps
+}
+
+
+
+task makeChangelogHtml(type: GitChangelogTask) {
+    fromRepo = projectDir.absolutePath.toString()
+    file = new File ("changelog.html")
+    untaggedName = "Current release ${project.version}"
+    fromCommit = (System.getenv("GIT_PREVIOUS_SUCCESSFUL_COMMIT") ?: changelogStartCommit)
+    toRef =  "HEAD"
+    templateContent = file("changelog.mustache").text
+
+    doLast {
+        String changeLogText = file('changelog.html').text
+        if (releaseType == "alpha" || releaseType == "beta") {
+            changeLogText = attachPreReleaseWarning(changeLogText, ChangeLogType.HTML)
+        }
+        changeLogText = attachReleaseNotes(changeLogText, ChangeLogType.HTML)
+        file('changelog.html').setText(changeLogText)
+    }
+}
+
+task makeChangelogMd(type: GitChangelogTask) {
+    fromRepo = projectDir.absolutePath.toString()
+    file = new File ("changelog.md")
+    untaggedName = "Current release ${project.version}"
+    fromCommit = (System.getenv("GIT_PREVIOUS_SUCCESSFUL_COMMIT") ?: changelogStartCommit)
+    toRef =  "HEAD"
+    templateContent = file("changelog-markdown.mustache").text
+
+    doLast {
+        String changeLogText = file('changelog.md').text
+        if (releaseType == "alpha" || releaseType == "beta") {
+            changeLogText = attachPreReleaseWarning(changeLogText, ChangeLogType.MARKDOWN)
+        }
+        changeLogText = attachReleaseNotes(changeLogText, ChangeLogType.MARKDOWN)
+        file('changelog.md').setText(changeLogText)
+    }
+}
+
+enum ChangeLogType {
+    HTML,
+    MARKDOWN
+}
+
+String attachReleaseNotes(String changeLogText, ChangeLogType type) {
+    if (type == ChangeLogType.HTML) {
+        def releaseNotesFile = project.file("docs/release_${modVersion}.html")
+        if (releaseNotesFile.exists()) {
+            def releaseNotes = releaseNotesFile.getText()
+            changeLogText = "$releaseNotes\n<br />\n$changeLogText"
+        }
+    } else if (type == ChangeLogType.MARKDOWN) {
+        def releaseNotesFile = project.file("docs/release_${modVersion}.md")
+        if (releaseNotesFile.exists()) {
+            def releaseNotes = releaseNotesFile.getText()
+            changeLogText = "$releaseNotes\n\n$changeLogText"
+        }
+    } else {
+        println("Could not attach release notes warning to changelog")
+    }
+    return changeLogText
+}
+
+String attachPreReleaseWarning(String changeLogText, ChangeLogType type) {
+    if (type == ChangeLogType.HTML) {
+        changeLogText = "<strong>Warning: ${projectProperName} is currently in a pre-release state, and is not recommended for widespread use in modpacks. There may be game breaking bugs, " +
+                "and updating from one pre-release to the next may cause various ${projectProperName} blocks and items to disappear/void their contents. " +
+                "While this is unlikely to happen, make sure to make backups.</strong>\n<br />\n$changeLogText"
+    } else if (type == ChangeLogType.MARKDOWN) {
+        changeLogText = "**Warning: ${projectProperName} is currently in a pre-release state, and is not recommended for widespread use in modpacks. There may be game breaking bugs, " +
+                "and updating from one pre-release to the next may cause various ${projectProperName} blocks and items to disappear/void their contents. " +
+                "While this is unlikely to happen, make sure to make backups.**\n\n$changeLogText"
+    } else {
+        println("Could not attach pre-release warning to changelog")
+    }
+    return changeLogText
 }
