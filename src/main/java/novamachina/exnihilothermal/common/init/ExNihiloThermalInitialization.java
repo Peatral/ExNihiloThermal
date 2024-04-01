@@ -6,16 +6,16 @@ import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import novamachina.exnihilosequentia.common.init.ExNihiloItems;
-import novamachina.exnihilosequentia.common.utility.ExNihiloLogger;
+import novamachina.exnihilosequentia.world.item.EXNItems;
 import novamachina.exnihilothermal.common.utility.ExNihiloThermalConstants;
+import org.slf4j.Logger;
 
 @Mod.EventBusSubscriber(
     modid = ExNihiloThermalConstants.ModIds.EX_NIHILO_THERMAL,
     bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class ExNihiloThermalInitialization {
 
-  private static final ExNihiloLogger logger = new ExNihiloLogger(LogUtils.getLogger());
+  private static final Logger logger = LogUtils.getLogger();
 
   private ExNihiloThermalInitialization() {}
 
@@ -32,9 +32,9 @@ public class ExNihiloThermalInitialization {
 
   private static void enableOres() {
     //    ExNihiloItems.COPPER.setEnabled(true);
-    ExNihiloItems.SILVER.setEnabled(true);
-    ExNihiloItems.TIN.setEnabled(true);
-    ExNihiloItems.LEAD.setEnabled(true);
-    ExNihiloItems.NICKEL.setEnabled(true);
+    EXNItems.SILVER.setEnabled(true);
+    EXNItems.TIN.setEnabled(true);
+    EXNItems.LEAD.setEnabled(true);
+    EXNItems.NICKEL.setEnabled(true);
   }
 }

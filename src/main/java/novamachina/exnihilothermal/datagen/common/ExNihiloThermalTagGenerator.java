@@ -1,23 +1,29 @@
 package novamachina.exnihilothermal.datagen.common;
 
-import net.minecraft.data.DataGenerator;
-import net.minecraft.data.tags.BlockTagsProvider;
+import java.util.concurrent.CompletableFuture;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.data.PackOutput;
 import net.minecraftforge.common.data.ExistingFileHelper;
-import novamachina.exnihilosequentia.datagen.api.datagen.AbstractItemTagGenerator;
 import novamachina.exnihilothermal.api.ExNihiloThermalTags;
 import novamachina.exnihilothermal.common.init.ExNihiloThermalItems;
 import novamachina.exnihilothermal.common.utility.ExNihiloThermalConstants;
+import novamachina.novacore.data.tags.TagProvider;
 
-public class ExNihiloThermalTagGenerator extends AbstractItemTagGenerator {
+public class ExNihiloThermalTagGenerator extends TagProvider {
 
-  public ExNihiloThermalTagGenerator(DataGenerator generator, BlockTagsProvider blockTagsProvider,
+  public ExNihiloThermalTagGenerator(
+      PackOutput output,
+      CompletableFuture<HolderLookup.Provider> lookupProvider,
       ExistingFileHelper existingFileHelper) {
-    super(generator, blockTagsProvider, ExNihiloThermalConstants.ModIds.EX_NIHILO_THERMAL,
+    super(
+        output,
+        lookupProvider,
+        ExNihiloThermalConstants.ModIds.EX_NIHILO_THERMAL,
         existingFileHelper);
   }
 
   @Override
-  protected void addTags() {
-//    tag(ExNihiloThermalTags.DUST_OBSIDIAN).add(ExNihiloThermalItems.DUST_OBSIDIAN.get());
+  protected void registerTags() {
+    addToTag(ExNihiloThermalTags.DUST_OBSIDIAN, ExNihiloThermalItems.DUST_OBSIDIAN.get());
   }
 }

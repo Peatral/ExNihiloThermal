@@ -1,26 +1,25 @@
 package novamachina.exnihilothermal.datagen.client;
 
 import com.mojang.logging.LogUtils;
-import net.minecraft.data.DataGenerator;
+import net.minecraft.data.PackOutput;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraftforge.client.model.generators.ItemModelProvider;
 import net.minecraftforge.common.data.ExistingFileHelper;
 import net.minecraftforge.registries.ForgeRegistries;
-import novamachina.exnihilosequentia.common.utility.ExNihiloLogger;
-import novamachina.exnihilosequentia.datagen.api.datagen.AbstractItemGenerator;
 import novamachina.exnihilothermal.common.init.ExNihiloThermalItems;
 import novamachina.exnihilothermal.common.utility.ExNihiloThermalConstants;
+import org.slf4j.Logger;
 
-public class ExNihiloThermalItemGenerator extends AbstractItemGenerator {
+public class ExNihiloThermalItemGenerator extends ItemModelProvider {
 
-  private static final ExNihiloLogger logger = new ExNihiloLogger(LogUtils.getLogger());
+  private static final Logger logger = LogUtils.getLogger();
 
   private static final String ITEMS_TAG = "item/";
   private static final String ITEM_GENERATED = "item/generated";
   private static final String LAYER_0_TAG = "layer0";
 
-  public ExNihiloThermalItemGenerator(
-      DataGenerator generator, String modId, ExistingFileHelper existingFileHelper) {
-    super(generator, modId, existingFileHelper);
+  public ExNihiloThermalItemGenerator(PackOutput generator, ExistingFileHelper existingFileHelper) {
+    super(generator, ExNihiloThermalConstants.ModIds.EX_NIHILO_THERMAL, existingFileHelper);
   }
 
   @Override

@@ -15,7 +15,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "exnihilothermal:ens_basalz_doll"
+        "recipe": "exnihilothermal:ens_blitz_doll"
       },
       "trigger": "minecraft:recipe_unlocked"
     }
@@ -28,7 +28,8 @@
   ],
   "rewards": {
     "recipes": [
-      "exnihilothermal:ens_basalz_doll"
+      "exnihilothermal:ens_blitz_doll"
     ]
-  }
+  },
+  "sends_telemetry_event": false
 }

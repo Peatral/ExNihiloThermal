@@ -1,0 +1,13 @@
+{
+  "type": "exnihilosequentia:crushing",
+  "input": {
+    "item": "minecraft:obsidian"
+  },
+  "results": [
+    {
+      "chance": 1.0,
+      "count": 4,
+      "item": "exnihilothermal:obsidian_dust"
+    }
+  ]
+}

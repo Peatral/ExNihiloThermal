@@ -10,7 +10,7 @@
       "tag": "forge:crops/nether_wart"
     },
     "x": {
-      "tag": "forge:dusts/obsidian"
+      "item": "thermal:niter_dust"
     },
     "y": {
       "item": "exnihilosequentia:porcelain_doll"
@@ -25,7 +25,7 @@
     "xwx"
   ],
   "result": {
-    "item": "exnihilothermal:basalz_doll"
+    "item": "exnihilothermal:blitz_doll"
   },
   "show_notification": true
 }

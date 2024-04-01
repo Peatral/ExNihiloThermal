@@ -7,8 +7,6 @@ import net.minecraft.world.item.Item;
 
 public class ExNihiloThermalTags {
 
-  public static final TagKey<Item> DUST_OBSIDIAN = ItemTags.create(
-      new ResourceLocation("forge", "dust/obsidian"));
-
-
+  public static final TagKey<Item> DUST_OBSIDIAN =
+      ItemTags.create(new ResourceLocation("forge", "dusts/obsidian"));
 }

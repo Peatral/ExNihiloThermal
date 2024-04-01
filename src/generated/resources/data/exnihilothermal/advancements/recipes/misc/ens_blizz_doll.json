@@ -30,5 +30,6 @@
     "recipes": [
       "exnihilothermal:ens_blizz_doll"
     ]
-  }
+  },
+  "sends_telemetry_event": false
 }

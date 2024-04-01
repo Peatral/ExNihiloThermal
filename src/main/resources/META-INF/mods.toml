@@ -4,7 +4,7 @@ license = "Creative Commons"
 issueTrackerURL = "${git_url}/issues" #optional
 [[mods]] #mandatory
 modId = "exnihilothermal" #mandatory
-version = "${version}" #mandatory
+version = "${mod_version}" #mandatory
 displayName = "Ex Nihilo: Sequentia - Thermal Expansion Addon" #mandatory
 displayURL = "${curseforge_url}" #optional
 logoFile = "logo.png" #optional
@@ -17,12 +17,18 @@ description = '''
 [[dependencies.exnihilothermal]]
 modId = "exnihilosequentia"
 mandatory = true
-versionRange = "${ex_nihilo_version}"
+versionRange = "${exnihilo_range}"
+ordering = "AFTER"
+side = "BOTH"
+[[dependencies.exnihilothermal]]
+modId = "novacore"
+mandatory = true
+versionRange = "${nova_core_range}"
 ordering = "AFTER"
 side = "BOTH"
 [[dependencies.exnihilothermal]]
 modId = "thermal_foundation"
 mandatory = true
-versionRange = "${thermal_foundation_version}"
+versionRange = "${thermal_foundation_range}"
 ordering = "AFTER"
 side = "BOTH"

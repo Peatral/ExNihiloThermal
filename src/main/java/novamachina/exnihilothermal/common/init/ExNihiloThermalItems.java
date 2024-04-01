@@ -7,11 +7,11 @@ import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
-import novamachina.exnihilosequentia.common.item.DollItem;
-import novamachina.exnihilosequentia.common.item.ResourceItem;
 import novamachina.exnihilosequentia.common.utility.ExNihiloConstants;
-import novamachina.exnihilosequentia.common.utility.ExNihiloLogger;
+import novamachina.exnihilosequentia.world.item.DollItem;
+import novamachina.exnihilosequentia.world.item.ResourceItem;
 import novamachina.exnihilothermal.common.utility.ExNihiloThermalConstants;
+import org.slf4j.Logger;
 
 public class ExNihiloThermalItems {
 
@@ -57,7 +57,7 @@ public class ExNihiloThermalItems {
       ITEMS.register(
           ExNihiloThermalConstants.Items.DUST_OBSIDIAN,
           () -> new ResourceItem(ExNihiloThermalConstants.Items.DUST_OBSIDIAN));
-  @Nonnull private static final ExNihiloLogger logger = new ExNihiloLogger(LogUtils.getLogger());
+  @Nonnull private static final Logger logger = LogUtils.getLogger();
 
   public static void init(@Nonnull final IEventBus modEventBus) {
     logger.debug("Register items");

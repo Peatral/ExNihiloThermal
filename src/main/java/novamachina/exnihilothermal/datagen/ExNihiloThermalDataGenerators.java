@@ -1,11 +1,12 @@
 package novamachina.exnihilothermal.datagen;
 
+import java.util.concurrent.CompletableFuture;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.data.DataGenerator;
-import net.minecraft.data.tags.BlockTagsProvider;
+import net.minecraft.data.PackOutput;
 import net.minecraftforge.data.event.GatherDataEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import novamachina.exnihilothermal.common.utility.ExNihiloThermalConstants;
 import novamachina.exnihilothermal.datagen.client.ExNihiloThermalItemGenerator;
 import novamachina.exnihilothermal.datagen.client.ExNihiloThermalLangGenerator;
 import novamachina.exnihilothermal.datagen.common.ExNihiloThermalRecipeGenerator;
@@ -17,28 +18,23 @@ public class ExNihiloThermalDataGenerators {
   @SubscribeEvent
   public static void gatherData(GatherDataEvent event) {
     DataGenerator generator = event.getGenerator();
+    PackOutput packoutput = generator.getPackOutput();
+    CompletableFuture<HolderLookup.Provider> lookupProvider = event.getLookupProvider();
+
     if (event.includeServer()) {
-      generator.addProvider(true, new ExNihiloThermalRecipeGenerator(generator));
+      generator.addProvider(
+          true, new ExNihiloThermalRecipeGenerator(packoutput, event.getExistingFileHelper()));
       generator.addProvider(
           true,
           new ExNihiloThermalTagGenerator(
-              generator,
-              new BlockTagsProvider(
-                  generator,
-                  ExNihiloThermalConstants.ModIds.EX_NIHILO_THERMAL,
-                  event.getExistingFileHelper()),
-              event.getExistingFileHelper()));
+              packoutput, lookupProvider, event.getExistingFileHelper()));
     }
     if (event.includeClient()) {
       // Items
       generator.addProvider(
-          true,
-          new ExNihiloThermalItemGenerator(
-              generator,
-              ExNihiloThermalConstants.ModIds.EX_NIHILO_THERMAL,
-              event.getExistingFileHelper()));
+          true, new ExNihiloThermalItemGenerator(packoutput, event.getExistingFileHelper()));
       // Lang
-      generator.addProvider(true, new ExNihiloThermalLangGenerator(generator, "en_us"));
+      generator.addProvider(true, new ExNihiloThermalLangGenerator(packoutput, "en_us"));
     }
   }
 }

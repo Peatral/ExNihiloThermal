@@ -1,5 +1,6 @@
 {
   "type": "minecraft:crafting_shaped",
+  "category": "misc",
   "group": "exnihilosequentia",
   "key": {
     "v": {
@@ -25,5 +26,6 @@
   ],
   "result": {
     "item": "exnihilothermal:blizz_doll"
-  }
+  },
+  "show_notification": true
 }

@@ -1,13 +1,13 @@
 package novamachina.exnihilothermal.datagen.client;
 
-import net.minecraft.data.DataGenerator;
-import novamachina.exnihilosequentia.datagen.api.datagen.AbstractLangGenerator;
+import net.minecraft.data.PackOutput;
 import novamachina.exnihilothermal.common.init.ExNihiloThermalItems;
 import novamachina.exnihilothermal.common.utility.ExNihiloThermalConstants.ModIds;
+import novamachina.novacore.data.AbstractLangGenerator;
 
 public class ExNihiloThermalLangGenerator extends AbstractLangGenerator {
 
-  public ExNihiloThermalLangGenerator(DataGenerator gen, String locale) {
+  public ExNihiloThermalLangGenerator(PackOutput gen, String locale) {
     super(gen, ModIds.EX_NIHILO_THERMAL, locale);
   }
 

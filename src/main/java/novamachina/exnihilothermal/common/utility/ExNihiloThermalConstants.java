@@ -7,8 +7,7 @@ public class ExNihiloThermalConstants {
     public static final String EX_NIHILO_THERMAL = "exnihilothermal";
     public static final String THERMAL = "thermal";
 
-    private ModIds() {
-    }
+    private ModIds() {}
   }
 
   public class Items {
@@ -18,7 +17,6 @@ public class ExNihiloThermalConstants {
     public static final String DOLL_BLIZZ = "blizz_doll";
     public static final String DUST_OBSIDIAN = "obsidian_dust";
 
-    private Items() {
-    }
+    private Items() {}
   }
 }
